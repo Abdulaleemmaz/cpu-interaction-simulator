@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CPU Interaction Simulator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+:root{--bg:#0e1621;--panel:#16212f;--p2:#1d2b3d;--ink:#e6edf5;--mut:#93a5b9;--line:#34475f;--addr:#f5b942;--data:#4fd1e8;--ctrl:#ff7b7b;--acc:#6f9bff;--ok:#4fd18b;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#eef2f7;--panel:#fff;--p2:#f1f5f9;--ink:#162231;--mut:#52657a;--line:#bccadb;--addr:#b87400;--data:#007c93;--ctrl:#c93b3b;--acc:#2a5fd6;--ok:#1b8a52;color-scheme:light}}
+:root[data-theme="light"]{--bg:#eef2f7;--panel:#fff;--p2:#f1f5f9;--ink:#162231;--mut:#52657a;--line:#bccadb;--addr:#b87400;--data:#007c93;--ctrl:#c93b3b;--acc:#2a5fd6;--ok:#1b8a52;color-scheme:light}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.55 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:clamp(24px,3.4vw,34px);margin:0 0 4px;letter-spacing:-.01em}
+.sub{margin:0 0 18px;color:var(--mut);max-width:70ch}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:16px;align-items:start}
+@media(max-width:980px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.stage{overflow-x:auto;padding:10px}
+svg{display:block;width:100%;min-width:660px;height:auto}
+.ln{stroke:var(--line);stroke-width:3;stroke-linecap:round}
+.cpu{fill:var(--panel);stroke:var(--acc);stroke-width:2}
+.rf{fill:none;stroke:var(--line);stroke-width:1.5;stroke-dasharray:4 4}
+.cap{fill:var(--mut);font-size:12px}.cpul{fill:var(--acc);font-size:14px;font-weight:600}
+.node rect{fill:var(--p2);stroke:var(--line);stroke-width:1.5;transition:stroke .2s,fill .2s}
+.node.hot rect{stroke:var(--acc);stroke-width:2.5;fill:color-mix(in srgb,var(--acc) 20%,var(--p2))}
+.nt{fill:var(--ink);font-size:14px;font-weight:600}.nv{fill:var(--mut);font-size:12px}
+.node.r .nv{fill:var(--ink);font:500 12px "IBM Plex Mono",ui-monospace,monospace}
+.fl{animation:fl .9s}@keyframes fl{0%{fill:var(--acc);font-weight:700}100%{}}
+.rt{fill:none;stroke-width:3;stroke-dasharray:3 7;stroke-linejoin:round;transition:opacity .3s}
+.ka{fill:var(--addr);stroke:var(--addr)}.kd{fill:var(--data);stroke:var(--data)}.kc{fill:var(--ctrl);stroke:var(--ctrl)}
+circle.pk{filter:drop-shadow(0 0 5px currentColor);stroke:none}
+.pl{font:500 11px "IBM Plex Mono",ui-monospace,monospace;fill:var(--ink);stroke:var(--bg);stroke-width:3;paint-order:stroke}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;padding:8px 6px 2px;color:var(--mut);font-size:13px}
+.legend i,#log li::before{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:baseline}
+.legend .a,li.ka::before{background:var(--addr)}.legend .d,li.kd::before{background:var(--data)}.legend .c,li.kc::before{background:var(--ctrl)}
+.side{display:grid;gap:12px}
+h3{margin:0 0 8px;font-size:15px}
+.scn{display:grid;gap:6px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.sb{text-align:left;background:var(--p2);border:1px solid var(--line);border-radius:9px;padding:8px 11px}
+.sb b{display:block;font-weight:600}.sb span{color:var(--mut);font-size:13px}
+.sb:hover{border-color:var(--acc)}.sb.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 16%,var(--p2))}
+.ph{display:flex;gap:6px;margin:0 0 10px}.ph span{flex:1;text-align:center;font-size:12.5px;padding:3px 0;border-radius:6px;background:var(--p2);color:var(--mut)}
+.ph span.on{background:var(--acc);color:#fff;font-weight:600}
+.top{display:flex;align-items:center;gap:10px;color:var(--mut);font-size:13px}
+.bar{flex:1;height:5px;background:var(--p2);border-radius:3px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--acc);transition:width .4s}
+#st{font-size:18px;margin:8px 0 4px}#sx{margin:0;min-height:96px}
+.ctl{display:flex;gap:6px;flex-wrap:wrap}
+.btn{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:7px 14px;font-weight:600}
+.btn.g{background:var(--p2);color:var(--ink);border:1px solid var(--line)}
+select{font:inherit;background:var(--p2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px}
+.stl{margin:0;padding:0 0 0 22px;font-size:13.5px}.stl li{padding:4px 0;color:var(--mut)}.stl li b{color:var(--ink)}.stl li small{display:block;font-size:12.5px}.stl li.dn{opacity:.75}.stl li.cur{background:color-mix(in srgb,var(--acc) 16%,transparent);border-radius:6px;margin-left:-6px;padding-left:6px;opacity:1}
+#log{list-style:none;margin:0;padding:0;font-size:13px;min-height:60px}
+#log li{padding:2px 0;border-top:1px solid var(--line)}#log li:first-child{border:0}
+#log em{float:right;font:500 12px "IBM Plex Mono",ui-monospace,monospace;color:var(--mut);font-style:normal}
+#quiz{margin-top:16px;max-width:760px}
+.qm{color:var(--mut);font-size:13px;margin:0}.opts{display:grid;gap:7px;margin:10px 0}
+.opt{text-align:left;background:var(--p2);border:1px solid var(--line);border-radius:9px;padding:9px 12px}
+.opt:hover:not(:disabled){border-color:var(--acc)}.opt:disabled{cursor:default;color:var(--ink)}
+.opt.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 18%,var(--p2))}
+.opt.no{border-color:var(--ctrl);background:color-mix(in srgb,var(--ctrl) 16%,var(--p2))}
+.fb{min-height:24px;margin:0 0 8px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head><body><div class="wrap">
+<h1>CPU Interaction Simulator</h1>
+<p class="sub">Watch how the processor talks to memory and devices. Pick a scenario and follow each signal along the address, data and control buses.</p>
+<div class="grid">
+<div><div class="card stage"><svg id="svg" viewBox="0 0 900 500" role="img" aria-label="Diagram of the CPU connected to RAM, cache and external devices"></svg>
+<div class="legend"><span><i class="a"></i>Address bus: where to look</span><span><i class="d"></i>Data bus: the actual content</span><span><i class="c"></i>Control bus: commands and signals</span></div></div></div>
+<div class="side">
+<div class="card"><h3>Scenarios</h3><div class="scn" id="scn"></div></div>
+<div class="card" aria-live="polite"><div class="ph" id="ph"><span>Fetch</span><span>Decode</span><span>Execute</span><span>I/O</span></div>
+<div class="top"><span id="stn">Ready</span><div class="bar"><i id="bar"></i></div></div>
+<h2 id="st">Pick a scenario to begin</h2><p id="sx">Choose one of the six scenarios above. Each step is explained here in plain English while the signals move through the diagram.</p></div>
+<div class="card"><div class="ctl"><button class="btn" id="pb">Play</button><button class="btn g" id="bb">Previous step</button><button class="btn g" id="nb">Next step</button><button class="btn g" id="rb">Restart</button>
+<select id="sp" aria-label="Speed"><option value=".5">0.5× speed</option><option value="1" selected>1× speed</option><option value="2">2× speed</option></select></div></div>
+<div class="card"><h3>All steps, start to finish</h3><ol class="stl" id="stl"><li>Select a scenario to see every step from beginning to end.</li></ol></div>
+<div class="card"><h3>Bus activity</h3><ul id="log"></ul></div>
+</div></div>
+<section class="card" id="quiz"><h3>Test your knowledge</h3><div id="qb"></div></section>
+</div>
+<script>
+const $=s=>document.querySelector(s),NS='http://www.w3.org/2000/svg';
+const E=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e};
+const svg=$('#svg'),gS=E('g',{},svg),gN=E('g',{},svg),gR=E('g',{},svg),gP=E('g',{},svg);
+const N={
+kb:{x:20,y:60,w:150,h:58,t:'Keyboard',s:'Input device',d:'L'},
+mon:{x:20,y:150,w:150,h:58,t:'Monitor',s:'Output device',d:'L'},
+prn:{x:20,y:240,w:150,h:58,t:'Printer',s:'Output device',d:'L'},
+sto:{x:20,y:330,w:150,h:58,t:'HDD / SSD',s:'Secondary storage',d:'L'},
+ram:{x:730,y:110,w:150,h:70,t:'RAM',s:'Main memory',d:'R'},
+cache:{x:730,y:260,w:150,h:70,t:'Cache',s:'Small and very fast',d:'R'},
+cu:{x:310,y:80,w:280,h:70,t:'Control Unit (CU)',n:'CU',s:'Directs every step',d:'C'},
+alu:{x:310,y:165,w:280,h:70,t:'ALU',s:'Arithmetic and logic',d:'C'},
+pc:{x:320,y:285,w:125,h:40,t:'PC',s:'—',d:'C',r:1},ir:{x:320,y:340,w:125,h:40,t:'IR',s:'—',d:'C',r:1},acc:{x:320,y:395,w:125,h:40,t:'ACC',s:'—',d:'C',r:1},
+mar:{x:465,y:285,w:125,h:40,t:'MAR',s:'—',d:'C',r:1},mdr:{x:465,y:340,w:125,h:40,t:'MDR',s:'—',d:'C',r:1},r1:{x:465,y:395,w:125,h:40,t:'R1',s:'—',d:'C',r:1}};
+const ln=(a,b,c,d)=>E('line',{x1:a,y1:b,x2:c,y2:d,class:'ln'},gS),tx=(x,y,s,c,a)=>{const e=E('text',{x,y,class:c,'text-anchor':a||'start'},gS);e.textContent=s};
+ln(240,89,240,359);ln(240,224,290,224);ln(660,145,660,295);ln(610,224,660,224);ln(805,180,805,260);
+for(const k in N){const n=N[k];if(n.d=='L')ln(170,n.y+29,240,n.y+29);if(n.d=='R')ln(730,n.y+35,660,n.y+35)}
+E('rect',{x:290,y:50,width:320,height:420,rx:14,class:'cpu'},gS);E('rect',{x:310,y:250,width:280,height:200,rx:10,class:'rf'},gS);
+tx(450,70,'CPU','cpul','middle');tx(322,268,'Registers','cap');tx(20,36,'External units','cap');tx(730,36,'Internal units','cap');tx(240,382,'I/O bus','cap','middle');tx(660,318,'Memory bus','cap','middle');
+for(const k in N){const n=N[k];n.cx=n.x+n.w/2;n.cy=n.y+n.h/2;const g=E('g',{class:'node'+(n.r?' r':'')},gN);n.g=g;E('rect',{x:n.x,y:n.y,width:n.w,height:n.h,rx:n.r?6:9},g);
+if(n.r){E('text',{x:n.x+12,y:n.cy+5,class:'nt'},g).textContent=n.t;n.v=E('text',{x:n.x+n.w-10,y:n.cy+5,'text-anchor':'end',class:'nv'},g)}
+else{E('text',{x:n.x+14,y:n.y+26,class:'nt'},g).textContent=n.t;n.v=E('text',{x:n.x+14,y:n.y+n.h-14,class:'nv'},g)}n.v.textContent=n.s}
+const X={L:[170,240,300],R:[730,660,600]};
+function route(f,t){const a=N[f],b=N[t];
+if(a.d=='C'&&b.d=='C'){if(a.cx==b.cx||a.cy==b.cy)return[[a.cx,a.cy],[b.cx,b.cy]];return[[a.cx,a.cy],[450,a.cy],[450,b.cy],[b.cx,b.cy]]}
+if(a.d=='C'||b.d=='C'){const rev=a.d=='C',e=rev?b:a,c=rev?a:b,[ed,bus,l]=X[e.d],p=[[ed,e.cy],[bus,e.cy],[bus,224],[l,224],[l,c.cy],[c.cx,c.cy]];return rev?p.reverse():p}
+const dn=a.cy<b.cy;return[[a.cx,dn?a.y+a.h:a.y],[b.cx,dn?b.y:b.y+b.h]]}
+const pl=p=>{let l=0;for(let i=1;i<p.length;i++)l+=Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]);return l};
+function at(p,d){for(let i=1;i<p.length;i++){const a=p[i-1],b=p[i],s=Math.hypot(b[0]-a[0],b[1]-a[1]);if(d<=s||i==p.length-1){const f=s?Math.min(d/s,1):1;return[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f]}d-=s}}
+const A=(f,t,l,s,par)=>({k:'a',f,t,l,s,par}),D=(f,t,l,s,par)=>({k:'d',f,t,l,s,par}),C=(f,t,l,s,par)=>({k:'c',f,t,l,s,par}),ST=(ph,t,x,p,s)=>({ph,t,x,p,s});
+const S=[
+{n:'Read a keyboard command',d:'Key press, interrupt, then store it',st:[
+ST('I/O','A key is pressed','You press the letter “H”. The keyboard does not make the CPU wait. It sends an interrupt on the control bus: “Input is ready!”',[C('kb','cu','IRQ')],{cu:'Interrupt received'}),
+ST('I/O','The key code arrives','The Control Unit answers “go ahead”. The key code 0x48 (the letter H) travels on the data bus into the accumulator (ACC).',[C('cu','kb','ACK'),D('kb','acc','0x48',{acc:'0x48'})]),
+ST('Fetch','Find the right program','The CPU needs instructions to handle the key. The Program Counter (PC) holds 0x10, the address of the next instruction. It is copied to the MAR, which sends it on the address bus to RAM.',[A('pc','mar','0x10',{mar:'0x10'}),A('mar','ram','0x10')],{pc:'0x10'}),
+ST('Fetch','RAM sends the instruction','RAM finds “STORE” at 0x10 and puts it on the data bus. It lands in the MDR, then moves to the Instruction Register (IR). The PC steps on to 0x11.',[D('ram','mdr','STORE',{mdr:'STORE'}),D('mdr','ir','STORE',{ir:'STORE',pc:'0x11'})]),
+ST('Decode','The CU decodes it','The Control Unit reads the IR and works out what STORE means: save the accumulator into memory.',[C('ir','cu','decode')],{cu:'Decoding STORE'}),
+ST('Execute','Save the key code','Address 0x80 goes out on the address bus, a WRITE signal on the control bus, and the key code follows on the data bus. RAM now holds the letter.',[A('mar','ram','0x80'),C('cu','ram','WRITE'),D('acc','ram','0x48',{ram:'[0x80] = 0x48'})],{mar:'0x80',cu:'Executing STORE'})]},
+{n:'Fetch from RAM, show on screen',d:'Cache miss, load a value, display it',st:[
+ST('Fetch','Look in the cache first','The PC holds 0x20. The address goes to the MAR, then out on the address bus to the cache: small, but very fast. Is the instruction already there?',[A('pc','mar','0x20',{mar:'0x20'}),A('mar','cache','0x20')],{pc:'0x20',cache:'Searching…'}),
+ST('Fetch','Cache miss: ask RAM','It is not in the cache (a cache miss), so the request goes on to the slower RAM. RAM returns “LOAD 0x50” and the cache keeps a copy in case it is needed again soon.',[C('cache','cu','MISS',{cache:'Miss, asking RAM'}),A('mar','ram','0x20'),D('ram','cache','LOAD 0x50',{cache:'Copy saved'}),D('cache','mdr','LOAD 0x50',{mdr:'LOAD 0x50'})]),
+ST('Decode','Decode the instruction','The instruction moves into the IR and the CU decodes it: LOAD means copy the value stored at address 0x50 into the accumulator. The PC moves on to 0x21.',[D('mdr','ir','LOAD 0x50',{ir:'LOAD 0x50',pc:'0x21'}),C('ir','cu','decode')],{cu:'Decoding LOAD'}),
+ST('Execute','Ask for the data','The address 0x50 is placed in the MAR and sent to RAM on the address bus.',[A('ir','mar','0x50',{mar:'0x50'}),A('mar','ram','0x50')]),
+ST('Execute','RAM sends the value','RAM puts the value 42 on the data bus. It passes through the MDR and is stored in the accumulator.',[D('ram','mdr','42',{mdr:'42'}),D('mdr','acc','42',{acc:'42'})]),
+ST('I/O','Show it on the screen','The CU signals the monitor on the control bus. Then the value 42 travels on the data bus and is displayed.',[C('cu','mon','SHOW'),D('acc','mon','42',{mon:'Showing: 42'})],{cu:'Sending output'})]},
+{n:'Calculate 1 + 1',d:'Fetch, decode, compute and store',st:[
+ST('Fetch','Fetch the instruction','PC = 0x30. The address is copied to the MAR and sent to RAM on the address bus. RAM replies on the data bus with the instruction “ADD 1,1”.',[A('pc','mar','0x30',{mar:'0x30'}),A('mar','ram','0x30'),D('ram','mdr','ADD 1,1',{mdr:'ADD 1,1'})],{pc:'0x30'}),
+ST('Decode','Decode ADD','The instruction moves into the IR. The CU decodes it and prepares the ALU for an addition. The PC steps on to 0x31.',[D('mdr','ir','ADD 1,1',{ir:'ADD 1,1',pc:'0x31'}),C('ir','cu','decode')],{cu:'Decoding ADD'}),
+ST('Execute','Load both numbers','The two numbers to add go into registers: 1 into the accumulator and 1 into R1.',[D('mdr','acc','1',{acc:'1'}),D('mdr','r1','1',{r1:'1'},true)]),
+ST('Execute','Send them to the ALU','The CU sends an ADD signal on the control bus. Both values travel to the Arithmetic Logic Unit.',[C('cu','alu','ADD'),D('acc','alu','1'),D('r1','alu','1',{alu:'1 + 1 = ?'},true)]),
+ST('Execute','The ALU calculates','Inside the ALU, 1 + 1 = 2. The result goes back into the accumulator, replacing the old value.',[D('alu','acc','2',{acc:'2',alu:'1 + 1 = 2'})],{alu:'Adding…'}),
+ST('Execute','Store the result','The result is saved: address 0x60 goes out on the address bus and the value 2 on the data bus. RAM now holds the answer.',[A('mar','ram','0x60'),D('acc','ram','2',{ram:'[0x60] = 2'})],{mar:'0x60'})]},
+{n:'Print a file',d:'Storage, RAM and the printer',st:[
+ST('I/O','Print command','You press Ctrl+P. The keyboard sends an interrupt to the Control Unit on the control bus.',[C('kb','cu','Ctrl+P')],{cu:'Print request'}),
+ST('Fetch','Fetch the print routine','The PC points at 0x40. The address goes to the MAR and on to RAM, which returns the instruction “PRINT”.',[A('pc','mar','0x40',{mar:'0x40'}),A('mar','ram','0x40'),D('ram','mdr','PRINT',{mdr:'PRINT'})],{pc:'0x40'}),
+ST('Decode','Decode PRINT','The IR holds PRINT. The CU works out that the file sits on the SSD, so it must be read first. The PC moves on to 0x41.',[D('mdr','ir','PRINT',{ir:'PRINT',pc:'0x41'}),C('ir','cu','decode')],{cu:'Decoding PRINT'}),
+ST('I/O','Request the file','The CU sends a READ signal to the storage drive. The location of the file on the drive goes out on the address bus.',[C('cu','sto','READ'),A('mar','sto','blk 7F')],{mar:'blk 7F',sto:'Reading…'}),
+ST('I/O','The file arrives','The drive sends the file data on the data bus. Storage is slow compared with RAM, so data comes in blocks. The first block lands in the MDR.',[D('sto','mdr','report.pdf',{mdr:'report.pdf',sto:'Read finished'})]),
+ST('Execute','Copy it to RAM','RAM is far faster than storage, so the data is parked there. Address 0x900 goes on the address bus and the data is written to a RAM buffer. (Real computers often use DMA here, so the CPU can do other work.)',[A('mar','ram','0x900'),D('mdr','ram','report.pdf',{ram:'Buffer: report.pdf'})],{mar:'0x900'}),
+ST('I/O','Send it to the printer','The CU tells the printer to start. The data is read from RAM and travels on the data bus to the printer.',[C('cu','prn','PRINT'),D('ram','mdr','report.pdf'),D('mdr','prn','report.pdf',{prn:'Printing…'})]),
+ST('I/O','Job finished','When the last page is out, the printer sends a DONE interrupt so the CPU can move on to other work.',[C('prn','cu','DONE',{prn:'Done ✓',cu:'Idle'})])]},
+{n:'Handle an interrupt',d:'Pause a task, serve a device, resume',st:[
+ST('Execute','The CPU is busy','The CPU is running a program and is adding 5 + 3 in the ALU. Everything seems normal.',[D('acc','alu','5'),D('r1','alu','3',{alu:'5 + 3'},true)],{pc:'0x50',ir:'ADD 5,3',acc:'5',r1:'3',cu:'Executing ADD'}),
+ST('I/O','A key is pressed','The keyboard sends an interrupt on the control bus. The CPU finishes the instruction it is on, then notices the request.',[C('kb','cu','IRQ')],{cu:'Interrupt received'}),
+ST('Execute','Save the current state','Before switching tasks, the CPU must remember where it was. The PC value 0x51 and the accumulator value 5 are written to a safe place in RAM.',[A('mar','ram','0xF0'),D('pc','ram','0x51'),D('acc','ram','5',{ram:'Saved PC and ACC'})],{mar:'0xF0',pc:'0x51'}),
+ST('Fetch','Jump to the handler','The CU loads the address of the keyboard handler, 0x200, into the PC. The CPU then fetches the first instruction of the handler from RAM.',[C('cu','pc','jump',{pc:'0x200'}),A('pc','mar','0x200',{mar:'0x200'}),A('mar','ram','0x200'),D('ram','mdr','READ KEY',{mdr:'READ KEY'})]),
+ST('I/O','Run the handler','The instruction is decoded and the CU asks the keyboard for the key code, which arrives in the accumulator over the data bus.',[D('mdr','ir','READ KEY',{ir:'READ KEY'}),C('cu','kb','READ'),D('kb','acc','0x48',{acc:'0x48'})],{cu:'Running handler'}),
+ST('Execute','Restore and resume','The handler is done. The saved PC and accumulator values return from RAM, so the first program carries on exactly where it stopped.',[A('mar','ram','0xF0'),D('ram','pc','0x51',{pc:'0x51'}),D('ram','acc','5',{acc:'5',cu:'Resumed ADD'})],{mar:'0xF0'})]},
+{n:'Virtual memory (page fault)',d:'RAM is full, so swap pages with the SSD',st:[
+ST('Fetch','The program needs a page','A program reads address 0x7000, which belongs to Page C. The address goes to RAM, but Page C is not there. This is called a page fault.',[A('mar','ram','0x7000'),C('ram','cu','FAULT',{ram:'Page C missing'})],{mar:'0x7000',cu:'Page fault'}),
+ST('Execute','RAM is full','Page C is stored on the SSD, in a swap area. To bring it in, the operating system needs free space, so it picks Page B, which has not been used for a while.',[C('cu','ram','FREE?',{ram:'Full, free a page'}),D('ram','mdr','Page B',{mdr:'Page B'})]),
+ST('I/O','Save Page B to the SSD','Page B is written to the SSD to free its space in RAM. The SSD is much slower than RAM, so this takes a relatively long time.',[C('cu','sto','WRITE'),D('mdr','sto','Page B',{sto:'Swap: Page B',ram:'Space freed'})]),
+ST('I/O','Read Page C from the SSD','Now the SSD sends Page C back on the data bus. Again, it arrives much more slowly than anything coming from RAM.',[C('cu','sto','READ'),D('sto','mdr','Page C',{mdr:'Page C'})],{sto:'Reading Page C…'}),
+ST('Execute','Load Page C into RAM','The page is written into the space that was freed in RAM, and the system records where it now lives.',[A('mar','ram','0x7000'),D('mdr','ram','Page C',{ram:'Page C loaded'})]),
+ST('Execute','Try the access again','The program retries address 0x7000. This time RAM has the data and replies. It worked, but far slower than a normal read, which is why a computer feels slow when RAM is full.',[A('mar','ram','0x7000'),D('ram','mdr','data',{mdr:'data'}),D('mdr','acc','data',{acc:'data'})],{cu:'Resumed'})]}];
+const BN={a:'Address bus',d:'Data bus',c:'Control bus'},L=$('#log');
+let sc=-1,si=-1,playing=true,T=0,pk=[],last=0,speed=1,end=0,done=true,fin=false;
+S.forEach((s,i)=>{const b=document.createElement('button');b.className='sb';b.innerHTML=`<b>${s.n}</b><span>${s.d}</span>`;b.onclick=()=>load(i);$('#scn').appendChild(b)});
+function sv(id,v){const t=N[id].v;t.textContent=v;t.classList.remove('fl');t.getBoundingClientRect();t.classList.add('fl')}
+const hot=id=>N[id].g.classList.add('hot');
+function clr(){for(const k in N)N[k].g.classList.remove('hot');gR.innerHTML='';gP.innerHTML=''}
+function logp(p){const li=document.createElement('li');li.className='k'+p.k;li.innerHTML=`<b>${BN[p.k]}</b> ${N[p.f].n||N[p.f].t} → ${N[p.t].n||N[p.t].t}<em>${p.l}</em>`;L.prepend(li);while(L.children.length>7)L.lastChild.remove()}
+function upd(){$('#pb').textContent=fin?'Replay':playing?'Pause':'Play'}
+function load(i){sc=i;fin=false;playing=true;for(const k in N)N[k].v.textContent=N[k].s;L.innerHTML='';[...$('#scn').children].forEach((b,j)=>b.classList.toggle('on',j==i));last=S[i].st.length-1;$('#stl').innerHTML=S[i].st.map(s=>`<li><b>${s.t}</b><small>${s.ph}: ${s.x}</small></li>`).join('');upd();start(0)}
+function start(i){si=i;const st=S[sc].st[i];T=0;done=false;clr();
+$('#st').textContent=st.t;$('#sx').textContent=st.x;$('#stn').textContent=`Step ${i+1} of ${last+1}`;$('#bar').style.width=((i+1)/(last+1)*100)+'%';
+[...$('#ph').children].forEach(c=>c.classList.toggle('on',c.textContent==st.ph));[...$('#stl').children].forEach((li,j)=>{li.classList.toggle('cur',j==i);li.classList.toggle('dn',j<i)});
+if(st.s)for(const k in st.s)sv(k,st.s[k]);
+let ps=0,pe=0;end=0;
+pk=st.p.map(p=>{const pts=route(p.f,p.t),len=pl(pts),d=Math.max(len,70)/280,s=p.par?ps:(pe?pe+.2:0);ps=s;pe=Math.max(pe,s+d);end=pe;
+const rt=E('polyline',{points:pts.join(' '),class:'rt k'+p.k},gR);rt.style.opacity=0;
+const c=E('circle',{r:7,class:'pk k'+p.k},gP),t=E('text',{class:'pl'},gP);t.textContent=p.l;c.style.display=t.style.display='none';
+return{p,pts,len,d,s,rt,c,t}})}
+function fin1(q){q.done=1;q.c.style.display=q.t.style.display='none';hot(q.p.t);if(q.p.s)for(const k in q.p.s)sv(k,q.p.s[k])}
+function begin(q){q.on=1;q.rt.style.opacity=.55;q.c.style.display=q.t.style.display='';hot(q.p.f);logp(q.p)}
+let prev=0;
+function tick(ts){const dt=Math.min((ts-prev)/1000,.1);prev=ts;
+if(sc>=0&&!fin){T+=dt*speed;
+pk.forEach(q=>{if(q.done||T<q.s)return;if(!q.on)begin(q);const pr=Math.min(1,(T-q.s)/q.d),[x,y]=at(q.pts,pr*q.len);q.c.setAttribute('cx',x);q.c.setAttribute('cy',y);q.t.setAttribute('x',x+10);q.t.setAttribute('y',y-10);if(pr>=1)fin1(q)});
+if(T>=end){if(!done){done=true;if(si==last){fin=true;playing=false;$('#stn').textContent+=' · complete';upd()}}
+else if(playing&&si<last&&T>=end+2.4)start(si+1)}}
+requestAnimationFrame(tick)}
+requestAnimationFrame(tick);
+function flush(){pk.forEach(q=>{if(!q.done){if(!q.on)logp(q.p);q.rt.style.opacity=.55;hot(q.p.f);fin1(q)}})}
+$('#pb').onclick=()=>{if(sc<0)return;if(fin)return load(sc);playing=!playing;upd()};
+$('#nb').onclick=()=>{if(sc<0||si>=last)return;flush();start(si+1)};
+function goto(j){fin=false;for(const k in N)N[k].v.textContent=N[k].s;L.innerHTML='';for(let k=0;k<j;k++){const st=S[sc].st[k];for(const x in st.s||{})N[x].v.textContent=st.s[x];st.p.forEach(p=>{for(const x in p.s||{})N[x].v.textContent=p.s[x]})}upd();start(j)}
+$('#bb').onclick=()=>{if(sc<0||si<=0)return;playing=false;goto(si-1)};
+$('#rb').onclick=()=>{if(sc>=0)load(sc)};
+$('#sp').onchange=e=>speed=+e.target.value;
+const Q=[
+{q:'Which bus carries the memory location the CPU wants to read or write?',o:['The data bus','The address bus','The control bus','The power bus'],a:1,e:'The address bus carries locations, one way from the CPU out. The data bus carries the actual content and the control bus carries signals like READ, WRITE and interrupts.'},
+{q:'The CPU needs to work out 1 + 1. Which part does the arithmetic?',o:['Cache','Control Unit (CU)','Program Counter','ALU'],a:3,e:'The ALU does arithmetic and logic. The CU only directs the work by sending control signals.'},
+{q:'The CPU looks in the cache and the data is not there (a cache miss). What happens next?',o:['The request goes on to RAM and a copy is kept in the cache','The program crashes','The keyboard is asked for the data','The ALU recalculates it'],a:0,e:'On a miss, the request continues to the slower RAM. The cache keeps a copy because the same data is often needed again soon.'},
+{q:'Which register holds the address of the next instruction to fetch?',o:['IR (Instruction Register)','MDR (Memory Data Register)','PC (Program Counter)','ACC (Accumulator)'],a:2,e:'The PC holds the next address. The IR holds the instruction being decoded, and the MDR holds data moving to or from memory.'},
+{q:'Why is a file from the SSD usually copied into RAM before the CPU works on it?',o:['Storage cannot hold data','RAM is far faster, so the CPU waits much less','The CPU cannot read SSDs at all','The printer needs it in RAM'],a:1,e:'Storage is large but slow. RAM is much faster, so working data is kept there and the CPU spends less time waiting.'},
+{q:'What does a cache hit mean?',o:['The data was found in the cache, so RAM is not needed','The cache was erased by mistake','The CPU is waiting for the keyboard','Two caches hold different data'],a:0,e:'A hit means the data was already in the cache, which is the fastest case. A miss means the request must go on to RAM.'},
+{q:'Which bus carries signals such as READ, WRITE and interrupts?',o:['The address bus','The data bus','The control bus','The graphics bus'],a:2,e:'The control bus carries commands and status signals. The address bus carries locations and the data bus carries content.'},
+{q:'What does the CPU do when it receives an interrupt?',o:['It shuts down','It saves its place, runs a handler, then resumes','It ignores it until restart','It erases RAM'],a:1,e:'The CPU saves its state (such as the PC), runs the interrupt handler, then restores the state and carries on.'},
+{q:'What is a page fault?',o:['A paper jam in the printer','A broken ALU','A wrong key code from the keyboard','The needed memory page is not in RAM and must be loaded from storage'],a:3,e:'A page fault happens when the data is not in RAM. The system loads it from the swap area on the SSD, which is much slower.'},
+{q:'In the fetch step, what is copied from the PC into the MAR?',o:['The result of the last calculation','The key code','The address of the next instruction','The data for the printer'],a:2,e:'The PC holds the address of the next instruction. It is copied to the MAR, which sends it out on the address bus.'}];
+let qi=0,score=0,ans=false;
+function rq(){const b=$('#qb');if(qi>=Q.length){const m=score==Q.length?'Perfect. You understand how the CPU works with its units.':score>=Q.length*.6?'Good work. Replay a scenario to firm up the rest.':'Run the scenarios again and watch each bus closely, then retry.';b.innerHTML=`<p><b>You scored ${score} out of ${Q.length}.</b> ${m}</p><button class="btn" id="rt">Try again</button>`;$('#rt').onclick=()=>{qi=0;score=0;rq()};return}
+const q=Q[qi];ans=false;b.innerHTML=`<p class="qm">Question ${qi+1} of ${Q.length}</p><p><b>${q.q}</b></p><div class="opts">${q.o.map((t,i)=>`<button class="opt" data-i="${i}">${t}</button>`).join('')}</div><p class="fb" id="fb"></p><button class="btn" id="qn" hidden>${qi==Q.length-1?'See my score':'Next question'}</button>`;
+b.querySelectorAll('.opt').forEach(x=>x.onclick=()=>{if(ans)return;ans=true;const i=+x.dataset.i,ok=i==q.a;if(ok)score++;
+b.querySelectorAll('.opt').forEach((y,j)=>{y.disabled=true;if(j==q.a)y.classList.add('ok');else if(y==x)y.classList.add('no')});
+$('#fb').innerHTML=(ok?'<b>Correct.</b> ':'<b>Not quite.</b> ')+q.e;$('#qn').hidden=false;$('#qn').onclick=()=>{qi++;rq()}})}
+rq();
+</script></body></html>
